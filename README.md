@@ -14,6 +14,7 @@
 
 # Database for Prospectius
 
+- **Type :** CRM
 - **DB:** mysql
 - **Langage pour les scripts:** Python
 - **Extension utilisés:** aiomysql, mysqlconnector, bcrypt, re
