@@ -1,5 +1,5 @@
 /*
-    Scripts de suppression des tables et de la base de donneés
+    Scripts de suppression des tables et de la base de données
 */
 
 # Suppression des Tables
