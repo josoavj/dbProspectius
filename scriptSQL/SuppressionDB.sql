@@ -2,8 +2,6 @@
     Scripts de suppression des tables et de la base de donneés
 */
 
-
-
 # Suppression des Tables
 DROP TABLE IF EXISTS Account;
 DROP TABLE IF EXISTS Prospect;
