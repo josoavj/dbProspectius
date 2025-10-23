@@ -127,7 +127,7 @@ CREATE TABLE Prospect
     id_prospect INT AUTO_INCREMENT PRIMARY KEY,
     nomp        VARCHAR(50),
     prenomp     VARCHAR(50),
-    telephome   VARCHAR(30),
+    telephone   VARCHAR(30),
     email       VARCHAR(100),
     adresse     VARCHAR(100),
     type        ENUM ('particulier', 'societe', 'organisation'),
