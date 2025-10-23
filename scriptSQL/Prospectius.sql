@@ -122,7 +122,7 @@ END$$
 
 DELIMITER ;
 
-CREATE TABLE PROSPECT
+CREATE TABLE Prospect
 (
     id_prospect INT AUTO_INCREMENT PRIMARY KEY,
     nomp        VARCHAR(50),
@@ -138,6 +138,16 @@ CREATE TABLE PROSPECT
     FOREIGN KEY (assignation) REFERENCES Account(id_compte)
 );
 
+CREATE TABLE Interaction (
+    id_interaction INT AUTO_INCREMENT PRIMARY KEY,
+    id_prospect INT,
+    id_compte INT,
+    type ENUM('email', 'appel', 'sms', 'reunion'),
+    note TEXT,
+    date_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_prospect) REFERENCES Prospect(id_prospect),
+    FOREIGN KEY (id_compte) REFERENCES Account(id_compte)
+);
 
 /*
     Modifié le 18 Octobre 2025
