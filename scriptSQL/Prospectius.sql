@@ -19,7 +19,7 @@ CREATE TABLE Account (
                          email VARCHAR(100) NOT NULL UNIQUE,
                          username VARCHAR(50) NOT NULL UNIQUE,
                          password VARCHAR(255) NOT NULL,
-                         type_compte ENUM('Administrateur', 'Utilisateur') NOT NULL,
+                         type_compte ENUM('Administrateur', 'Utilisateur', 'Commercial') NOT NULL,
                          date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                          UNIQUE (nom, prenom)
 );
@@ -121,6 +121,33 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+CREATE TABLE Prospect
+(
+    id_prospect INT AUTO_INCREMENT PRIMARY KEY,
+    nomp        VARCHAR(50),
+    prenomp     VARCHAR(50),
+    telephone   VARCHAR(30),
+    email       VARCHAR(100),
+    adresse     VARCHAR(100),
+    type        ENUM ('particulier', 'societe', 'organisation'),
+    status      ENUM ('nouveau', 'interesse', 'negociation', 'perdu', 'converti') DEFAULT 'nouveau',
+    creation    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    assignation INT,
+    FOREIGN KEY (assignation) REFERENCES Account(id_compte)
+);
+
+CREATE TABLE Interaction (
+    id_interaction INT AUTO_INCREMENT PRIMARY KEY,
+    id_prospect INT,
+    id_compte INT,
+    type ENUM('email', 'appel', 'sms', 'reunion'),
+    note TEXT,
+    date_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_prospect) REFERENCES Prospect(id_prospect),
+    FOREIGN KEY (id_compte) REFERENCES Account(id_compte)
+);
 
 /*
     Modifié le 18 Octobre 2025
