@@ -51,4 +51,4 @@ async def DBConnection():
         else:
             logger.error("Impossible de se connecter à la base de données après plusieurs tentatives")
 
-
+    return None
