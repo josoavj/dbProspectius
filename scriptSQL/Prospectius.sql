@@ -140,7 +140,7 @@ CREATE TABLE Prospect
     type        ENUM ('particulier', 'societe', 'organisation'),
     status      ENUM ('nouveau', 'interesse', 'negociation', 'perdu', 'converti') DEFAULT 'nouveau',
     creation    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    date_update    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     assignation INT,
     FOREIGN KEY (assignation) REFERENCES Account(id_compte)
 );
