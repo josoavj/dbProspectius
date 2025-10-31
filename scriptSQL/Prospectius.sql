@@ -11,6 +11,13 @@ DROP DATABASE IF EXISTS Prospectius;
 CREATE DATABASE Prospectius;
 USE Prospectius;
 
+/*
+    Trois tables présentes dans la base de données : Account, Prospect, Interaction
+    Table Account : Pour les comptes utilisateurs
+    Table Prospect : Pour les prospects
+    Table Interaction : Pour les interactions avec les prospects
+*/
+
 -- Table Compte
 CREATE TABLE Account (
                          id_compte INT AUTO_INCREMENT PRIMARY KEY,
@@ -133,7 +140,7 @@ CREATE TABLE Prospect
     type        ENUM ('particulier', 'societe', 'organisation'),
     status      ENUM ('nouveau', 'interesse', 'negociation', 'perdu', 'converti') DEFAULT 'nouveau',
     creation    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    date_update    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     assignation INT,
     FOREIGN KEY (assignation) REFERENCES Account(id_compte)
 );
