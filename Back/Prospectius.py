@@ -1,4 +1,3 @@
-# Prospectius.py (Le Main)
 import asyncio
 import logging
 from typing import Dict, Any, Optional, Tuple, List
