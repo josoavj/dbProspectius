@@ -1,17 +1,27 @@
 import asyncio
 import logging
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 
 # --- Importation des Services ---
-# NOTE: J'ai décommenté les imports de services pour un code plus cohérent
 try:
+    # Services de base et de gestion des comptes
     from Back.dbManager import initialize_db_pool, close_db_pool
-    from Back.Account.accountService import authenticate_account, create_account, get_all_accounts, update_account_info, \
-        update_account_password, delete_account, get_account_by_id
-    from Back.Prospect.prospectService import create_prospect, get_prospects_list, get_prospect_by_id, update_prospect, \
-        delete_prospect
-    from Back.Interaction.interactionService import (create_interaction, get_interactions_by_prospect)
-    from Back.Reporting.reportingService import get_prospect_status_distribution, get_conversion_rate
+    from Back.Account.accountService import (
+        authenticate_account, create_account, get_all_accounts,
+        update_account_info, update_account_password, delete_account,
+        get_account_by_id
+    )
+    # Services de gestion des prospects
+    from Back.Prospect.prospectService import (
+        create_prospect, get_prospects_list, get_prospect_by_id,
+        update_prospect, delete_prospect
+    )
+    # Services de gestion des interactions
+    from Back.Interaction.interactionService import (
+        create_interaction, get_interactions_by_prospect
+    )
+    # Services de reporting
+    from Back.StatsReport.statService import get_prospect_status_distribution, get_conversion_rate
     # from Back.Export.exportService import export_prospects_to_excel
 except ImportError as e:
     print(f"Erreur d'importation. Assurez-vous que les fichiers de services sont dans le chemin correct: {e}")
@@ -25,9 +35,9 @@ logger = logging.getLogger("ProspectiusApp")
 CURRENT_USER: Optional[Dict[str, Any]] = None
 
 
-# ----------------------------------------------
+# ==============================================
 #              FONCTIONS UTILITAIRES
-# ----------------------------------------------
+# ==============================================
 
 async def collect_db_params() -> Tuple[str, int, str, str, str]:
     """Collecte les paramètres de la DB via l'entrée utilisateur."""
@@ -62,9 +72,9 @@ def display_user_menu():
     print("-" * 60)
 
 
-# ----------------------------------------------
-#             LOGIQUE D'AUTHENTIFICATION & COMPTES
-# ----------------------------------------------
+# ==============================================
+#          LOGIQUE D'AUTHENTIFICATION & COMPTES
+# ==============================================
 
 async def handle_login():
     """Gère l'écran de connexion initial."""
@@ -85,6 +95,32 @@ async def handle_login():
         return False
 
 
+async def handle_create_first_account() -> bool:
+    """Force la création d'un compte Administrateur si la DB est vide."""
+    print("\n" + "*" * 50)
+    print(" * AUCUN COMPTE D'UTILISATEUR DÉTECTÉ   *")
+    print(" * Veuillez créer le premier Administrateur. *")
+    print("*" * 50)
+
+    print("\n--- CRÉATION DU COMPTE ADMINISTRATEUR INITIAL ---")
+    nom = input("Nom: ")
+    prenom = input("Prénom: ")
+    email = input("Email: ")
+    username = input("Nom d'utilisateur (unique): ")
+    password = input("Mot de passe (8+ caractères): ")
+    type_compte = 'Administrateur'
+
+    result = await create_account(nom, prenom, email, username, password, type_compte)
+
+    if result.get('success'):
+        print(f"\n✅ {result['message']}")
+        print("Veuillez vous connecter avec ce nouveau compte.")
+        return True
+    else:
+        print(f"\n❌ Échec de la création: {result.get('message', 'Erreur inconnue.')}")
+        return False
+
+
 async def display_account_management_menu():
     """Menu pour la gestion des comptes (Administrateurs uniquement)."""
     if CURRENT_USER['type_compte'] != 'Administrateur':
@@ -97,7 +133,6 @@ async def display_account_management_menu():
         print("2. Créer un nouveau compte")
         print("3. Modifier un compte existant")
         print("4. Supprimer un compte")
-        # AJOUT DE L'OPTION PRÉCÉDENT
         print("9. Retour au menu principal")
 
         choice = input("Votre choix: ")
@@ -110,7 +145,7 @@ async def display_account_management_menu():
             await handle_update_account()
         elif choice == '4':
             await handle_delete_account()
-        elif choice == '9':  # <-- SORTIE
+        elif choice == '9':
             break
         else:
             print("Choix invalide.")
@@ -128,11 +163,11 @@ async def handle_list_accounts():
     for a in accounts:
         print(f"[{a['id_compte']:<3}] {a['nom']} {a['prenom']} ({a['username']}) | Rôle: {a['type_compte']}")
     print("-" * 50)
-    input("Appuyez sur Entrée pour continuer...")  # Ajout pour maintenir l'affichage
+    input("Appuyez sur Entrée pour continuer...")
 
 
 async def handle_create_account():
-    """Gère la création d'un nouveau compte."""
+    """Gère la création d'un nouveau compte (utilisé dans le menu Admin)."""
     print("\n--- CRÉATION DE COMPTE ---")
     nom = input("Nom: ")
     prenom = input("Prénom: ")
@@ -163,7 +198,7 @@ async def handle_update_account():
     print(f"\nModification de {account['username']}")
     print("1. Modifier les informations (Nom/Email/Username)")
     print("2. Changer le mot de passe")
-    print("9. Annuler et Retour")  # Ajout d'une option d'annulation
+    print("9. Annuler et Retour")
 
     choice = input("Votre choix: ")
     if choice == '1':
@@ -187,7 +222,7 @@ async def handle_update_account():
     else:
         print("Choix invalide.")
 
-    if choice in ['1', '2', '9']:  # Ne pas attendre si le choix était invalide
+    if choice in ['1', '2', '9']:
         input("Appuyez sur Entrée pour continuer...")
 
 
@@ -210,36 +245,282 @@ async def handle_delete_account():
     input("Appuyez sur Entrée pour continuer...")
 
 
-# ----------------------------------------------
-#             STUBS : LOGIQUE DES PROSPECTS
-# ----------------------------------------------
+# ==============================================
+#             LOGIQUE DES PROSPECTS
+# ==============================================
 
 async def display_prospects_menu():
-    """ Menu stub pour la gestion des prospects. """
+    """ Menu de gestion des prospects. """
     while True:
         print("\n--- GESTION DES PROSPECTS ---")
         print("1. Lister / Filtrer les prospects")
         print("2. Ajouter un nouveau prospect")
-        print("3. Gérer un prospect (Détails, Interagir)")
+        print("3. Gérer un prospect (Détails, Interagir, Modifier, Supprimer)")
         print("9. Retour au menu principal")
 
         choice = input("Votre choix: ")
 
         if choice == '1':
-            print("Logique de liste/filtre de prospect non implémentée.")
+            await handle_list_prospects()
         elif choice == '2':
-            print("Logique d'ajout de prospect non implémentée.")
+            await handle_add_prospect()
         elif choice == '3':
-            print("Logique de gestion de prospect non implémentée.")
-        elif choice == '9':  # <-- SORTIE
+            await handle_prospect_details_menu()
+        elif choice == '9':
             break
         else:
             print("Choix invalide.")
 
 
-# ----------------------------------------------
-#             STUBS : LOGIQUE DE REPORTING ET EXPORT
-# ----------------------------------------------
+async def handle_add_prospect():
+    """Gère la création d'un nouveau prospect."""
+    print("\n--- AJOUT D'UN NOUVEAU PROSPECT ---")
+    nom = input("Nom: ")
+    entreprise = input("Entreprise: ")
+    email = input("Email: ")
+    telephone = input("Téléphone: ")
+    status = "nouveau"
+
+    users = await get_all_accounts()
+
+    if not users:
+        print("❌ Impossible d'assigner. Aucun compte utilisateur trouvé.")
+        id_assignation = CURRENT_USER['id_compte']
+    else:
+        print("\n--- CHOIX D'ASSIGNATION ---")
+        commercials = [u for u in users if u['type_compte'] in ('Commercial', 'Utilisateur', 'Administrateur')]
+
+        if not commercials:
+            print("Aucun commercial trouvé. Assigné à l'utilisateur actuel.")
+            id_assignation = CURRENT_USER['id_compte']
+        else:
+            for c in commercials:
+                print(f"[{c['id_compte']:<3}] {c['username']} ({c['type_compte']})")
+
+            id_assignation_str = input(f"ID du commercial à assigner (Défaut: {CURRENT_USER['id_compte']}): ")
+            try:
+                id_assignation = int(id_assignation_str) if id_assignation_str else CURRENT_USER['id_compte']
+            except ValueError:
+                print("ID invalide. Assigné à l'utilisateur actuel.")
+                id_assignation = CURRENT_USER['id_compte']
+
+    result = await create_prospect(nom, entreprise, email, telephone, status, id_assignation)
+
+    print(result.get('message', 'Erreur inconnue lors de la création du prospect.'))
+    input("Appuyez sur Entrée pour continuer...")
+
+
+async def handle_list_prospects():
+    """Affiche la liste des prospects avec option de filtrage."""
+    print("\n--- LISTE DES PROSPECTS ---")
+
+    if CURRENT_USER['type_compte'] != 'Administrateur':
+        assignation_filter = CURRENT_USER['id_compte']
+        print(f"Filtre actif: Affichage de vos prospects uniquement (ID assigné: {assignation_filter}).")
+    else:
+        assignation_filter = None
+
+    status_filter = input("Filtrer par statut (laisser vide pour tout): ").lower() or None
+
+    prospects = await get_prospects_list(assignation_filter, status_filter)
+
+    if not prospects:
+        print("\n=> Aucun prospect trouvé avec ces critères.")
+        input("Appuyez sur Entrée pour continuer...")
+        return
+
+    print(f"\n| {'ID':<4} | {'NOM':<20} | {'ENTREPRISE':<20} | {'STATUT':<12} | {'ASSIGNÉ À':<15} |")
+    print("|" + "―" * 5 + "|" + "―" * 21 + "|" + "―" * 21 + "|" + "―" * 13 + "|" + "―" * 16 + "|")
+
+    for p in prospects:
+        assigned_user = p.get('username_assigne', f"ID: {p['assignation']}")
+        print(
+            f"| {p['id_prospect']:<4} | {p['nom']:<20} | {p['entreprise']:<20} | {p['status']:<12} | {assigned_user:<15} |")
+
+    print("\nTotal prospects affichés:", len(prospects))
+    input("Appuyez sur Entrée pour continuer...")
+
+
+async def handle_prospect_details_menu():
+    """Gère le sous-menu de détails/modification/suppression/interaction."""
+    prospect_id_str = input("\nEntrez l'ID du prospect à gérer: ")
+    try:
+        prospect_id = int(prospect_id_str)
+    except ValueError:
+        print("ID invalide.")
+        return
+
+    while True:
+        prospect = await get_prospect_by_id(prospect_id)
+        if not prospect:
+            print(f"❌ Prospect ID {prospect_id} non trouvé.")
+            return
+
+        print("\n--- GESTION DU PROSPECT ---")
+        print(f"Prospect: {prospect['nom']} ({prospect['entreprise']}) | Statut actuel: {prospect['status']}")
+        print("-" * 50)
+        print("1. Afficher les détails complets")
+        print("2. Modifier le prospect")
+        print("3. Gérer les interactions (Ajouter/Lister)")
+        print("4. Supprimer le prospect")
+        print("9. Retour au menu des Prospects")
+
+        choice = input("Votre choix: ")
+
+        if choice == '1':
+            await handle_display_prospect_details(prospect)
+        elif choice == '2':
+            await handle_update_prospect_details(prospect_id, prospect)
+        elif choice == '3':
+            await handle_interaction_menu(prospect_id)
+        elif choice == '4':
+            await handle_delete_prospect_item(prospect_id)
+            break
+        elif choice == '9':
+            break
+        else:
+            print("Choix invalide.")
+
+
+async def handle_display_prospect_details(prospect: Dict):
+    """Affiche tous les détails d'un prospect."""
+    print("\n--- DÉTAILS DU PROSPECT ---")
+
+    user_info = await get_account_by_id(prospect['assignation'])
+    assigned_user = user_info['username'] if user_info else f"ID Inconnu: {prospect['assignation']}"
+
+    print(f"ID Prospect: {prospect['id_prospect']}")
+    print(f"Nom/Prénom: {prospect['nom']}")
+    print(f"Entreprise: {prospect['entreprise']}")
+    print(f"Email: {prospect['email']}")
+    print(f"Téléphone: {prospect['telephone']}")
+    print(f"Statut: {prospect['status'].upper()}")
+    print(f"Assigné à: {assigned_user}")
+    print(f"Date de Création: {prospect['creation']}")
+
+    input("\nAppuyez sur Entrée pour continuer...")
+
+
+async def handle_update_prospect_details(prospect_id: int, prospect: Dict):
+    """Gère la modification des informations d'un prospect."""
+    print("\n--- MODIFICATION DU PROSPECT ---")
+    print("Laisser vide pour conserver la valeur actuelle.")
+
+    updates = {}
+    updates['nom'] = input(f"Nom ({prospect['nom']}): ") or None
+    updates['entreprise'] = input(f"Entreprise ({prospect['entreprise']}): ") or None
+    updates['email'] = input(f"Email ({prospect['email']}): ") or None
+    updates['telephone'] = input(f"Téléphone ({prospect['telephone']}): ") or None
+
+    # Statut
+    current_status = prospect['status']
+    new_status = input(f"Statut ({current_status} | [nouveau, interesse, converti]): ").lower()
+    if new_status in ['nouveau', 'interesse', 'converti']:
+        updates['status'] = new_status
+    elif new_status:
+        print("Statut invalide ignoré.")
+
+    # Assignation
+    user_info = await get_account_by_id(prospect['assignation'])
+    current_user = user_info['username'] if user_info else 'Inconnu'
+
+    new_assignation_str = input(f"Assignation (Actuel: {current_user} | ID Compte): ")
+    if new_assignation_str:
+        try:
+            updates['assignation'] = int(new_assignation_str)
+        except ValueError:
+            print("ID d'assignation invalide ignoré.")
+
+    fields_to_update = {k: v for k, v in updates.items() if v is not None}
+
+    if fields_to_update:
+        result = await update_prospect(prospect_id, fields_to_update)
+        print(result['message'])
+    else:
+        print("Aucune modification effectuée.")
+
+    input("Appuyez sur Entrée pour continuer...")
+
+
+async def handle_delete_prospect_item(prospect_id: int):
+    """Gère la suppression d'un prospect."""
+    confirmation = input(f"Êtes-vous sûr de vouloir supprimer le prospect ID {prospect_id} ? (O/N): ")
+    if confirmation.upper() == 'O':
+        result = await delete_prospect(prospect_id)
+        print(result['message'])
+    else:
+        print("Suppression annulée.")
+    input("Appuyez sur Entrée pour continuer...")
+
+
+# ==============================================
+#             LOGIQUE DES INTERACTIONS
+# ==============================================
+
+async def handle_interaction_menu(prospect_id: int):
+    """Sous-menu de gestion des interactions pour un prospect donné."""
+    while True:
+        prospect = await get_prospect_by_id(prospect_id)
+
+        print("\n--- GESTION DES INTERACTIONS ---")
+        print(f"Prospect: {prospect['nom']} ({prospect['entreprise']})")
+        print("-" * 50)
+        print("1. Lister les interactions")
+        print("2. Ajouter une nouvelle interaction")
+        print("9. Retour à la gestion du Prospect")
+
+        choice = input("Votre choix: ")
+
+        if choice == '1':
+            await handle_display_interactions(prospect_id)
+        elif choice == '2':
+            await handle_add_interaction(prospect_id)
+        elif choice == '9':
+            break
+        else:
+            print("Choix invalide.")
+
+
+async def handle_display_interactions(prospect_id: int):
+    """Affiche la liste des interactions pour un prospect."""
+    print("\n--- HISTORIQUE DES INTERACTIONS ---")
+    interactions = await get_interactions_by_prospect(prospect_id)
+
+    if not interactions:
+        print("Aucune interaction enregistrée pour ce prospect.")
+        input("Appuyez sur Entrée pour continuer...")
+        return
+
+    print(f"| {'ID':<4} | {'TYPE':<15} | {'DATE':<19} | {'NOTE':<40} |")
+    print("|" + "―" * 5 + "|" + "―" * 16 + "|" + "―" * 20 + "|" + "―" * 41 + "|")
+
+    for i in interactions:
+        note_display = i['note'][:37] + '...' if len(i['note']) > 40 else i['note']
+        date_str = str(i['date_interaction']).split('.')[0]
+
+        print(f"| {i['id_interaction']:<4} | {i['type_interaction']:<15} | {date_str:<19} | {note_display:<40} |")
+
+    input("\nAppuyez sur Entrée pour continuer...")
+
+
+async def handle_add_interaction(prospect_id: int):
+    """Ajoute une nouvelle interaction au prospect."""
+    print("\n--- AJOUT D'UNE INTERACTION ---")
+
+    type_inter = input("Type d'interaction (appel, email, rdv, autre): ")
+    note = input("Note de l'interaction (détails importants): ")
+
+    id_compte = CURRENT_USER['id_compte']
+
+    result = await create_interaction(prospect_id, id_compte, type_inter, note)
+
+    print(result.get('message', 'Erreur inconnue lors de l\'enregistrement de l\'interaction.'))
+    input("Appuyez sur Entrée pour continuer...")
+
+
+# ==============================================
+#             LOGIQUE DE REPORTING (STUBS)
+# ==============================================
 
 async def handle_reporting_menu():
     """ Menu stub pour le reporting et l'export. """
@@ -253,20 +534,23 @@ async def handle_reporting_menu():
         choice = input("Votre choix: ")
 
         if choice == '1':
-            print("Logique d'affichage des statistiques non implémentée.")
+            # Appel à la fonction qui afficherait les stats de statut
+            print("Logique d'affichage des statistiques de statut non implémentée (appel à statService).")
         elif choice == '2':
-            print("Logique d'affichage du taux de conversion non implémentée.")
+            # Appel à la fonction qui afficherait le taux de conversion
+            print("Logique d'affichage du taux de conversion non implémentée (appel à statService).")
         elif choice == '3':
+            # Appel à la fonction d'export Excel
             print("Logique d'export non implémentée.")
-        elif choice == '9':  # <-- SORTIE
+        elif choice == '9':
             break
         else:
             print("Choix invalide.")
 
 
-# ----------------------------------------------
+# ==============================================
 #             BOUCLE PRINCIPALE DE L'APPLICATION
-# ----------------------------------------------
+# ==============================================
 
 async def application_loop():
     """Boucle principale de l'application, gérant les menus."""
@@ -274,12 +558,22 @@ async def application_loop():
 
     while True:
         if not CURRENT_USER:
-            # Étape 1: Authentification
+            # Étape 1: Pré-authentification et vérification des comptes
+            accounts = await get_all_accounts()
+
+            if not accounts:
+                # CAS 1: Base de données vide -> Création forcée du premier compte
+                if not await handle_create_first_account():
+                    if input("Quitter l'application ? (O/N): ").upper() == 'O':
+                        break
+                    continue
+
+            # CAS 2: Des comptes existent ou un compte vient d'être créé -> Tentative de Connexion
             success = await handle_login()
             if success:
                 continue
 
-            # Offrir l'option de quitter si la connexion échoue
+                # Échoue la connexion
             if input("Quitter l'application ? (O/N): ").upper() == 'O':
                 break
             continue
@@ -293,7 +587,6 @@ async def application_loop():
         elif choice == '2':
             await handle_reporting_menu()
         elif choice == '3':
-            # Vérification supplémentaire pour l'admin, même si le menu est filtré
             if CURRENT_USER['type_compte'] == 'Administrateur':
                 await display_account_management_menu()
             else:
