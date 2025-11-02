@@ -3,7 +3,6 @@ import logging
 from typing import Dict, Any, Optional, Tuple
 
 # --- Importation des Services ---
-# NOTE: J'ai décommenté les imports de services pour un code plus cohérent
 try:
     from Back.dbManager import initialize_db_pool, close_db_pool
     from Back.Account.accountService import authenticate_account, create_account, get_all_accounts, update_account_info, \
@@ -11,7 +10,7 @@ try:
     from Back.Prospect.prospectService import create_prospect, get_prospects_list, get_prospect_by_id, update_prospect, \
         delete_prospect
     from Back.Interaction.interactionService import (create_interaction, get_interactions_by_prospect)
-    from Back.Reporting.reportingService import get_prospect_status_distribution, get_conversion_rate
+    from Back.StatsReport.statService import get_prospect_status_distribution, get_conversion_rate
     # from Back.Export.exportService import export_prospects_to_excel
 except ImportError as e:
     print(f"Erreur d'importation. Assurez-vous que les fichiers de services sont dans le chemin correct: {e}")
