@@ -4,15 +4,16 @@ import logging
 from typing import Dict, Any, Optional, Tuple
 
 # --- Importation des Services ---
+# NOTE: J'ai décommenté les imports de services pour un code plus cohérent
 try:
     from Back.dbManager import initialize_db_pool, close_db_pool
     from Back.Account.accountService import authenticate_account, create_account, get_all_accounts, update_account_info, \
-    update_account_password, delete_account, get_account_by_id
+        update_account_password, delete_account, get_account_by_id
     from Back.Prospect.prospectService import create_prospect, get_prospects_list, get_prospect_by_id, update_prospect, \
         delete_prospect
     from Back.Interaction.interactionService import (create_interaction, get_interactions_by_prospect)
-    #from  import get_prospect_status_distribution, get_conversion_rate
-    #from export_service import export_prospects_to_excel
+    from Back.Reporting.reportingService import get_prospect_status_distribution, get_conversion_rate
+    # from Back.Export.exportService import export_prospects_to_excel
 except ImportError as e:
     print(f"Erreur d'importation. Assurez-vous que les fichiers de services sont dans le chemin correct: {e}")
     exit()
@@ -55,7 +56,6 @@ def display_user_menu():
     if CURRENT_USER['type_compte'] == 'Administrateur':
         print("3. Gestion des Comptes Utilisateurs (Admin)")
     else:
-        # Option 3 désactivée ou non affichée pour les non-administrateurs
         pass
 
     print("9. Déconnexion")
@@ -98,7 +98,8 @@ async def display_account_management_menu():
         print("2. Créer un nouveau compte")
         print("3. Modifier un compte existant")
         print("4. Supprimer un compte")
-        print("5. Retour au menu principal")
+        # AJOUT DE L'OPTION PRÉCÉDENT
+        print("9. Retour au menu principal")
 
         choice = input("Votre choix: ")
 
@@ -110,7 +111,7 @@ async def display_account_management_menu():
             await handle_update_account()
         elif choice == '4':
             await handle_delete_account()
-        elif choice == '5':
+        elif choice == '9':  # <-- SORTIE
             break
         else:
             print("Choix invalide.")
@@ -128,6 +129,7 @@ async def handle_list_accounts():
     for a in accounts:
         print(f"[{a['id_compte']:<3}] {a['nom']} {a['prenom']} ({a['username']}) | Rôle: {a['type_compte']}")
     print("-" * 50)
+    input("Appuyez sur Entrée pour continuer...")  # Ajout pour maintenir l'affichage
 
 
 async def handle_create_account():
@@ -142,6 +144,7 @@ async def handle_create_account():
 
     result = await create_account(nom, prenom, email, username, password, type_compte)
     print(result.get('message', 'Erreur inconnue.'))
+    input("Appuyez sur Entrée pour continuer...")
 
 
 async def handle_update_account():
@@ -161,6 +164,7 @@ async def handle_update_account():
     print(f"\nModification de {account['username']}")
     print("1. Modifier les informations (Nom/Email/Username)")
     print("2. Changer le mot de passe")
+    print("9. Annuler et Retour")  # Ajout d'une option d'annulation
 
     choice = input("Votre choix: ")
     if choice == '1':
@@ -179,8 +183,13 @@ async def handle_update_account():
         new_pwd = input("Nouveau mot de passe (8+ caractères): ")
         result = await update_account_password(id_compte, new_pwd)
         print(result['message'])
+    elif choice == '9':
+        print("Modification annulée.")
     else:
         print("Choix invalide.")
+
+    if choice in ['1', '2', '9']:  # Ne pas attendre si le choix était invalide
+        input("Appuyez sur Entrée pour continuer...")
 
 
 async def handle_delete_account():
@@ -199,20 +208,61 @@ async def handle_delete_account():
     else:
         print("Suppression annulée.")
 
+    input("Appuyez sur Entrée pour continuer...")
+
 
 # ----------------------------------------------
-#             LOGIQUE DES PROSPECTS
+#             STUBS : LOGIQUE DES PROSPECTS
 # ----------------------------------------------
-# (Les fonctions handle_list_prospects, handle_add_prospect, handle_prospect_details,
-# handle_update_prospect, handle_interaction_menu, handle_display_interactions,
-# et handle_add_interaction sont déjà dans la réponse précédente et non répétées ici
-# pour la concision, mais elles doivent être incluses dans le fichier final.)
+
+async def display_prospects_menu():
+    """ Menu stub pour la gestion des prospects. """
+    while True:
+        print("\n--- GESTION DES PROSPECTS ---")
+        print("1. Lister / Filtrer les prospects")
+        print("2. Ajouter un nouveau prospect")
+        print("3. Gérer un prospect (Détails, Interagir)")
+        print("9. Retour au menu principal")
+
+        choice = input("Votre choix: ")
+
+        if choice == '1':
+            print("Logique de liste/filtre de prospect non implémentée.")
+        elif choice == '2':
+            print("Logique d'ajout de prospect non implémentée.")
+        elif choice == '3':
+            print("Logique de gestion de prospect non implémentée.")
+        elif choice == '9':  # <-- SORTIE
+            break
+        else:
+            print("Choix invalide.")
+
 
 # ----------------------------------------------
-#             LOGIQUE DE REPORTING ET EXPORT
+#             STUBS : LOGIQUE DE REPORTING ET EXPORT
 # ----------------------------------------------
-# (Les fonctions handle_reporting_menu, display_status_stats, display_conversion_stats,
-# et handle_export_excel sont déjà dans la réponse précédente et non répétées ici.)
+
+async def handle_reporting_menu():
+    """ Menu stub pour le reporting et l'export. """
+    while True:
+        print("\n--- REPORTING & EXPORT ---")
+        print("1. Statistiques de distribution par statut")
+        print("2. Taux de conversion global")
+        print("3. Exporter la liste complète (Excel)")
+        print("9. Retour au menu principal")
+
+        choice = input("Votre choix: ")
+
+        if choice == '1':
+            print("Logique d'affichage des statistiques non implémentée.")
+        elif choice == '2':
+            print("Logique d'affichage du taux de conversion non implémentée.")
+        elif choice == '3':
+            print("Logique d'export non implémentée.")
+        elif choice == '9':  # <-- SORTIE
+            break
+        else:
+            print("Choix invalide.")
 
 
 # ----------------------------------------------
@@ -228,7 +278,7 @@ async def application_loop():
             # Étape 1: Authentification
             success = await handle_login()
             if success:
-                continue  # Aller au menu principal
+                continue
 
             # Offrir l'option de quitter si la connexion échoue
             if input("Quitter l'application ? (O/N): ").upper() == 'O':
@@ -240,11 +290,15 @@ async def application_loop():
         choice = input("Votre choix: ")
 
         if choice == '1':
-            await display_prospects_menu()  # Gestion des Prospects
+            await display_prospects_menu()
         elif choice == '2':
-            await handle_reporting_menu()  # Reporting & Export
+            await handle_reporting_menu()
         elif choice == '3':
-            await display_account_management_menu()  # Gestion des Comptes (Admin)
+            # Vérification supplémentaire pour l'admin, même si le menu est filtré
+            if CURRENT_USER['type_compte'] == 'Administrateur':
+                await display_account_management_menu()
+            else:
+                print("Accès non autorisé.")
         elif choice == '9':
             CURRENT_USER = None
             print("\nDéconnexion réussie.")
@@ -278,8 +332,6 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        # Nécessaire pour pouvoir utiliser les fonctions 'input' dans le contexte asynchrone
-        # La boucle 'main' inclut tous les appels aux fonctions asynchrones.
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nApplication arrêtée par l'utilisateur.")
