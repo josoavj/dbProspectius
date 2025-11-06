@@ -2,18 +2,14 @@ from typing import Dict, Optional, List, Any, Tuple
 from Back.dbManager import execute_query
 
 # --- Constantes (Types d'Interaction) ---
-# Correspond aux ENUM dans votre table Interaction
-TYPE_INTERACTION = ('email', 'appel', 'sms', 'reunion', 'note')
+TYPE_INTERACTION = ('email', 'appel', 'sms', 'reunion')
 
 
 # --- C. CREATE (Ajout d'une Interaction) ---
 async def create_interaction(id_prospect: int, id_compte: int, type_interaction: str, note: str) -> Dict[str, Any]:
     """
-    Ajoute une nouvelle interaction à la base de données.
-
-    NOTE : Après l'ajout, la colonne 'derniere_interaction' (ou 'update')
-           du Prospect correspondant devrait idéalement être mise à jour.
-           Nous gérons ici la mise à jour du Prospect directement.
+    Ajoute une nouvelle interaction à la base de données et met à jour
+    l'horodatage de modification ('date_update') du Prospect.
     """
 
     # Validation du type d'interaction
@@ -23,19 +19,19 @@ async def create_interaction(id_prospect: int, id_compte: int, type_interaction:
 
     # 1. Insertion de l'interaction
     sql_insert = """
-                 INSERT INTO Interaction (id_prospect, id_compte, type, note, date_interaction)
-                 VALUES (%s, %s, %s, %s, NOW()) \
+                 INSERT INTO Interaction (id_prospect, id_compte, type, note)
+                 VALUES (%s, %s, %s, %s) \
                  """
+    # NOTE: date_interaction est géré par DEFAULT CURRENT_TIMESTAMP dans la BDD
     params: Tuple = (id_prospect, id_compte, type_interaction, note)
 
     try:
         # Exécuter l'insertion
         await execute_query(sql_insert, params)
 
-        # 2. Mise à jour de la colonne de dernière interaction/modification dans la table Prospect
-        # (Nous supposons que vous avez renommé la colonne 'update' en 'date_update' ou autre)
-        # Si vous avez conservé le mot-clé 'update', utilisez les backticks: UPDATE Prospect SET `update` = NOW() ...
-        sql_update_prospect = "UPDATE Prospect SET `update` = NOW() WHERE id_prospect = %s"
+        # 2. Mise à jour de la colonne de dernière modification du Prospect
+        # ALIGNÉ BDD: Utilisation de la colonne 'date_update'
+        sql_update_prospect = "UPDATE Prospect SET date_update = NOW() WHERE id_prospect = %s"
         await execute_query(sql_update_prospect, (id_prospect,))
 
         return {"success": True, "message": "Interaction ajoutée et prospect mis à jour avec succès."}
@@ -52,12 +48,12 @@ async def get_interactions_by_prospect(id_prospect: int) -> List[Dict]:
     """
     # Jointure avec Account pour afficher le nom/username de l'auteur de l'interaction
     sql = """
-          SELECT i.id_interaction, \
-                 i.type, \
-                 i.note, \
-                 i.date_interaction, \
-                 a.username AS createur_username, \
-                 a.nom      AS createur_nom, \
+          SELECT i.id_interaction,
+                 i.type,
+                 i.note,
+                 i.date_interaction,
+                 a.username AS createur_username,
+                 a.nom      AS createur_nom,
                  a.prenom   AS createur_prenom
           FROM Interaction i
                    JOIN Account a ON i.id_compte = a.id_compte
@@ -69,16 +65,18 @@ async def get_interactions_by_prospect(id_prospect: int) -> List[Dict]:
 
 # --- D. DELETE (Suppression d'une Interaction) ---
 async def delete_interaction(id_interaction: int) -> Dict[str, Any]:
-    """Supprime une interaction spécifique."""
+    """
+    Supprime une interaction spécifique.
+
+    NOTE: Une logique métier plus avancée devrait recalcule la date_update du Prospect
+    si la dernière interaction est supprimée. Pour l'instant, on se contente de la suppression simple.
+    """
 
     sql = "DELETE FROM Interaction WHERE id_interaction = %s"
 
     try:
         rows_affected = await execute_query(sql, (id_interaction,))
         if rows_affected > 0:
-            # NOTE: La suppression d'une interaction ne met PAS à jour 'derniere_interaction'
-            # du prospect automatiquement. Cela devrait être géré par une logique métier
-            # (par exemple, recalcule la date de la plus récente interaction restante).
             return {"success": True, "message": "Interaction supprimée avec succès."}
         return {"success": False, "message": "Interaction non trouvée."}
     except Exception as e:
