@@ -1,3 +1,4 @@
+# Prospectius.py (Le Main) - Aligné sur la structure de la BDD
 import asyncio
 import logging
 from typing import Dict, Any, Optional, Tuple, List
@@ -273,12 +274,19 @@ async def display_prospects_menu():
 
 
 async def handle_add_prospect():
-    """Gère la création d'un nouveau prospect."""
+    """Gère la création d'un nouveau prospect. ALIGNÉ BDD"""
     print("\n--- AJOUT D'UN NOUVEAU PROSPECT ---")
-    nom = input("Nom: ")
-    entreprise = input("Entreprise: ")
+    nomp = input("Nom: ")
+    prenomp = input("Prénom: ")
     email = input("Email: ")
     telephone = input("Téléphone: ")
+    adresse = input("Adresse: ")
+
+    type_p = input("Type (particulier, societe, organisation): ").lower()
+    if type_p not in ('particulier', 'societe', 'organisation'):
+        print("Type invalide. Défaut: particulier.")
+        type_p = 'particulier'
+
     status = "nouveau"
 
     users = await get_all_accounts()
@@ -304,7 +312,8 @@ async def handle_add_prospect():
                 print("ID invalide. Assigné à l'utilisateur actuel.")
                 id_assignation = CURRENT_USER['id_compte']
 
-    result = await create_prospect(nom, entreprise, email, telephone, status, id_assignation)
+    # Le service create_prospect doit accepter les 7 arguments: nomp, prenomp, telephone, email, adresse, type, status, assignation
+    result = await create_prospect(nomp, prenomp, telephone, email, adresse, type_p, status, id_assignation)
 
     print(result.get('message', 'Erreur inconnue lors de la création du prospect.'))
     input("Appuyez sur Entrée pour continuer...")
@@ -329,13 +338,16 @@ async def handle_list_prospects():
         input("Appuyez sur Entrée pour continuer...")
         return
 
-    print(f"\n| {'ID':<4} | {'NOM':<20} | {'ENTREPRISE':<20} | {'STATUT':<12} | {'ASSIGNÉ À':<15} |")
-    print("|" + "―" * 5 + "|" + "―" * 21 + "|" + "―" * 21 + "|" + "―" * 13 + "|" + "―" * 16 + "|")
+    print(f"\n| {'ID':<4} | {'NOM & PRENOM':<25} | {'TELEPHONE':<15} | {'STATUT':<12} | {'ASSIGNÉ À':<15} |")
+    print("|" + "―" * 5 + "|" + "―" * 26 + "|" + "―" * 16 + "|" + "―" * 13 + "|" + "―" * 16 + "|")
 
     for p in prospects:
+        # NOTE: On suppose que le service a renommé 'nomp' et 'prenomp' en 'nom' et 'prenom' pour la simplicité du Dictionnaire retourné.
         assigned_user = p.get('username_assigne', f"ID: {p['assignation']}")
+        full_name = f"{p['nom']} {p['prenom']}"  # Si les services renvoient 'nom' et 'prenom'
+        # Si les services renvoient 'nomp' et 'prenomp': full_name = f"{p['nomp']} {p['prenomp']}"
         print(
-            f"| {p['id_prospect']:<4} | {p['nom']:<20} | {p['entreprise']:<20} | {p['status']:<12} | {assigned_user:<15} |")
+            f"| {p['id_prospect']:<4} | {full_name[:25]:<25} | {p['telephone']:<15} | {p['status']:<12} | {assigned_user:<15} |")
 
     print("\nTotal prospects affichés:", len(prospects))
     input("Appuyez sur Entrée pour continuer...")
@@ -357,7 +369,9 @@ async def handle_prospect_details_menu():
             return
 
         print("\n--- GESTION DU PROSPECT ---")
-        print(f"Prospect: {prospect['nom']} ({prospect['entreprise']}) | Statut actuel: {prospect['status']}")
+        # Utilisation des champs renvoyés par la BDD (nomp, prenomp)
+        prospect_name = f"{prospect.get('nomp', 'Nom')} {prospect.get('prenomp', 'Prénom')}"
+        print(f"Prospect: {prospect_name} | Statut actuel: {prospect['status']}")
         print("-" * 50)
         print("1. Afficher les détails complets")
         print("2. Modifier le prospect")
@@ -383,17 +397,19 @@ async def handle_prospect_details_menu():
 
 
 async def handle_display_prospect_details(prospect: Dict):
-    """Affiche tous les détails d'un prospect."""
+    """Affiche tous les détails d'un prospect. ALIGNÉ BDD"""
     print("\n--- DÉTAILS DU PROSPECT ---")
 
     user_info = await get_account_by_id(prospect['assignation'])
     assigned_user = user_info['username'] if user_info else f"ID Inconnu: {prospect['assignation']}"
 
+    # Affichage des champs BDD
     print(f"ID Prospect: {prospect['id_prospect']}")
-    print(f"Nom/Prénom: {prospect['nom']}")
-    print(f"Entreprise: {prospect['entreprise']}")
+    print(f"Nom/Prénom: {prospect.get('nomp')}/{prospect.get('prenomp')}")
     print(f"Email: {prospect['email']}")
     print(f"Téléphone: {prospect['telephone']}")
+    print(f"Adresse: {prospect.get('adresse')}")
+    print(f"Type (Société/Particulier): {prospect.get('type').upper()}")
     print(f"Statut: {prospect['status'].upper()}")
     print(f"Assigné à: {assigned_user}")
     print(f"Date de Création: {prospect['creation']}")
@@ -402,23 +418,34 @@ async def handle_display_prospect_details(prospect: Dict):
 
 
 async def handle_update_prospect_details(prospect_id: int, prospect: Dict):
-    """Gère la modification des informations d'un prospect."""
+    """Gère la modification des informations d'un prospect. ALIGNÉ BDD"""
     print("\n--- MODIFICATION DU PROSPECT ---")
     print("Laisser vide pour conserver la valeur actuelle.")
 
     updates = {}
-    updates['nom'] = input(f"Nom ({prospect['nom']}): ") or None
-    updates['entreprise'] = input(f"Entreprise ({prospect['entreprise']}): ") or None
+    updates['nomp'] = input(f"Nom ({prospect.get('nomp')}): ") or None
+    updates['prenomp'] = input(f"Prénom ({prospect.get('prenomp')}): ") or None
     updates['email'] = input(f"Email ({prospect['email']}): ") or None
     updates['telephone'] = input(f"Téléphone ({prospect['telephone']}): ") or None
+    updates['adresse'] = input(f"Adresse ({prospect.get('adresse')}): ") or None
 
-    # Statut
+    # Statut ENUM: nouveau, interesse, negociation, perdu, converti
     current_status = prospect['status']
-    new_status = input(f"Statut ({current_status} | [nouveau, interesse, converti]): ").lower()
-    if new_status in ['nouveau', 'interesse', 'converti']:
+    valid_statuses = ['nouveau', 'interesse', 'negociation', 'perdu', 'converti']
+    new_status = input(f"Statut ({current_status} | {valid_statuses}): ").lower()
+    if new_status in valid_statuses:
         updates['status'] = new_status
     elif new_status:
         print("Statut invalide ignoré.")
+
+    # Type ENUM: particulier, societe, organisation
+    current_type = prospect['type']
+    valid_types = ['particulier', 'societe', 'organisation']
+    new_type = input(f"Type ({current_type} | {valid_types}): ").lower()
+    if new_type in valid_types:
+        updates['type'] = new_type
+    elif new_type:
+        print("Type invalide ignoré.")
 
     # Assignation
     user_info = await get_account_by_id(prospect['assignation'])
@@ -463,7 +490,8 @@ async def handle_interaction_menu(prospect_id: int):
         prospect = await get_prospect_by_id(prospect_id)
 
         print("\n--- GESTION DES INTERACTIONS ---")
-        print(f"Prospect: {prospect['nom']} ({prospect['entreprise']})")
+        prospect_name = f"{prospect.get('nomp', 'Nom')} {prospect.get('prenomp', 'Prénom')}"
+        print(f"Prospect: {prospect_name}")
         print("-" * 50)
         print("1. Lister les interactions")
         print("2. Ajouter une nouvelle interaction")
@@ -498,20 +526,29 @@ async def handle_display_interactions(prospect_id: int):
         note_display = i['note'][:37] + '...' if len(i['note']) > 40 else i['note']
         date_str = str(i['date_interaction']).split('.')[0]
 
-        print(f"| {i['id_interaction']:<4} | {i['type_interaction']:<15} | {date_str:<19} | {note_display:<40} |")
+        print(
+            f"| {i['id_interaction']:<4} | {i['type']:<15} | {date_str:<19} | {note_display:<40} |")  # Clé 'type' alignée BDD
 
     input("\nAppuyez sur Entrée pour continuer...")
 
 
 async def handle_add_interaction(prospect_id: int):
-    """Ajoute une nouvelle interaction au prospect."""
+    """Ajoute une nouvelle interaction au prospect. ALIGNÉ BDD"""
     print("\n--- AJOUT D'UNE INTERACTION ---")
 
-    type_inter = input("Type d'interaction (appel, email, rdv, autre): ")
+    # Types d'interaction ENUM: email, appel, sms, reunion
+    valid_types = ['appel', 'email', 'sms', 'reunion']
+    type_inter = input(f"Type d'interaction ({valid_types}): ").lower()
+
+    if type_inter not in valid_types:
+        print("Type d'interaction invalide. Annulation.")
+        return
+
     note = input("Note de l'interaction (détails importants): ")
 
     id_compte = CURRENT_USER['id_compte']
 
+    # Le service doit accepter la clé 'type' au lieu de 'type_inter' si il a été codé avec les noms BDD
     result = await create_interaction(prospect_id, id_compte, type_inter, note)
 
     print(result.get('message', 'Erreur inconnue lors de l\'enregistrement de l\'interaction.'))
@@ -534,13 +571,10 @@ async def handle_reporting_menu():
         choice = input("Votre choix: ")
 
         if choice == '1':
-            # Appel à la fonction qui afficherait les stats de statut
             print("Logique d'affichage des statistiques de statut non implémentée (appel à statService).")
         elif choice == '2':
-            # Appel à la fonction qui afficherait le taux de conversion
             print("Logique d'affichage du taux de conversion non implémentée (appel à statService).")
         elif choice == '3':
-            # Appel à la fonction d'export Excel
             print("Logique d'export non implémentée.")
         elif choice == '9':
             break
